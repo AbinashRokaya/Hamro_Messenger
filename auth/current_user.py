@@ -11,39 +11,40 @@ from sqlalchemy.orm import Session
 
 oauth2_schema=OAuth2PasswordBearer(tokenUrl='/auth/login')
 
-async def get_current_user(token:str=Depends(oauth2_schema),db:Session=Depends(get_db))->AuthenticateUser:
+async def get_current_user(token:str=Depends(oauth2_schema))->AuthenticateUser:
+    with get_db() as db:
 
-    try:
-        payload=jwt.decode(token,SECRET_KEY,ALGORITHM)
-        token_data=TokenPayload(**payload)
+        try:
+            payload=jwt.decode(token,SECRET_KEY,ALGORITHM)
+            token_data=TokenPayload(**payload)
 
-        if datetime.fromtimestamp(token_data.exp)<datetime.utcnow():
+            if datetime.fromtimestamp(token_data.exp)<datetime.utcnow():
+                raise HTTPException(
+                    status_code=401,detail="Token expired",
+                    heaters={"WWW-Authenticate":"Bearer"}
+                )
+            
+        except(jwt.PyJWTError,ValidationError):
             raise HTTPException(
-                status_code=401,detail="Token expired",
-                heaters={"WWW-Authenticate":"Bearer"}
+                status_code=403,
+                detail="Could not validate credentails",
+                headers={"WWW-Authenticate":"Bearer"}
+
             )
-        
-    except(jwt.PyJWTError,ValidationError):
-        raise HTTPException(
-            status_code=403,
-            detail="Could not validate credentails",
-            heaters={"WWW-Authenticate":"Bearer"}
-
+        authenticate_user=db.query(UserModel).filter(UserModel.email==token_data.sub).first()
+        if not authenticate_user :
+            raise HTTPException(
+                status_code=404,
+                detail="User not found"
+            )
+        Users=AuthenticateUser(
+            user_id=authenticate_user.user_id,
+            email=authenticate_user.email,
+            username=authenticate_user.username,
+            phone_number=authenticate_user.phone_number,
+            address=authenticate_user.address,
+            age=authenticate_user.age
         )
-    authenticate_user=db.query(UserModel).filter(UserModel.email==token_data.sub).first()
-    if not authenticate_user :
-        raise HTTPException(
-            status_code=404,
-            detail="User not found"
-        )
-    Users=AuthenticateUser(
-        user_id=authenticate_user.user_id,
-        email=authenticate_user.email,
-        username=authenticate_user.username,
-        phone_number=authenticate_user.phone_number,
-        address=authenticate_user.address,
-        age=authenticate_user.age
-    )
 
-    return Users
+        return Users
 

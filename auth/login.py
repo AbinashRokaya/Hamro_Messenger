@@ -14,15 +14,16 @@ route=APIRouter(
 )
 
 @route.post("/login",response_model=Token)
-def login(db:Session=Depends(get_db),form_data:OAuth2PasswordRequestForm=Depends()):
-    get_user=db.query(UserModel).filter(UserModel.username==form_data.username).first()
-    if not get_user:
-        raise HTTPException(status_code=404,detail=f"User is not foud or email is Incorrect")
-    
-    if not verify_password(form_data.password,get_user.password):
+def login(form_data:OAuth2PasswordRequestForm=Depends()):
+    with get_db() as db:
+        get_user=db.query(UserModel).filter(UserModel.username==form_data.username).first()
+        if not get_user:
+            raise HTTPException(status_code=404,detail=f"User is not foud or email is Incorrect")
+        
+        if not verify_password(form_data.password,get_user.password):
 
-        raise HTTPException(status_code=400,detail="Incorrect password")
-    
-    access_token=create_access_token(get_user.email)
+            raise HTTPException(status_code=400,detail="Incorrect password")
+        
+        access_token=create_access_token(get_user.email)
 
-    return {"access_token":access_token,"token_type":"bearer"}
+        return {"access_token":access_token,"token_type":"bearer"}

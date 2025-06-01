@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f2f2f2;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+
+      .login-container {
+        background: white;
+        padding: 30px 40px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        width: 300px;
+      }
+
+      .login-container h2 {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      .login-container input {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 15px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+
+      .login-container button {
+        width: 100%;
+        padding: 10px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+
+      .login-container button:hover {
+        background: #0056b3;
+      }
+
+      .error {
+        color: red;
+        text-align: center;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="login-container">
+      <h2>Login</h2>
+      <form id="loginForm">
+        <input
+          type="text"
+          id="username"
+          placeholder="Username"
+          required
+          name="username"
+        />
+        <input
+          type="password"
+          id="password"
+          placeholder="Password"
+          required
+          name="password"
+        />
+        <button type="submit">Login</button>
+        <div class="error" id="errorMsg"></div>
+      </form>
+    </div>
+
+    <script>
+      const loginForm = document.getElementById("loginForm");
+      const errorMsg = document.getElementById("errorMsg");
+
+      loginForm.onsubmit = async function (e) {
+        e.preventDefault();
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+
+        const formData = new URLSearchParams();
+        formData.append("username", username);
+
+        formData.append("password", password);
+
+        try {
+          const res = await fetch("http://localhost:8000/auth/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: formData,
+          });
+
+          console.log("RES", res);
+
+          if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err || "Login failed");
+          }
+
+          const data = await res.json();
+          console.log("DATA", data);
+          // Save token or redirect
+          localStorage.setItem("token", data.access_token);
+          console.log("TOKEN", data.access_token);
+          window.location.href = "chat.html"; // redirect to main page
+        } catch (error) {
+          //   errorMsg.textContent = error.message;
+          console.log("ERRORS", error);
+        }
+      };
+    </script>
+  </body>
+</html>
