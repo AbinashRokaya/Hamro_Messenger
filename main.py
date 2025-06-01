@@ -31,12 +31,6 @@ app.add_middleware(
 )
 
 
-@app.get("/")
-async def index():
-    return HTMLResponse(html)
-
-
-
 class ConnectionManager:
     def __init__(self):
         self.active_connection:list[WebSocket]=[]
