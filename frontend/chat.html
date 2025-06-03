@@ -76,7 +76,9 @@
             window.location.href = `chat.html?userId=${user.user_id}`;
           };
 
-          const ws = new WebSocket(`ws://localhost:8000/ws/${user.user_id}`);
+          const ws = new WebSocket(
+            `ws://localhost:8000/ws/${user.user_id}?token=${token}`
+          );
           activeWebSocket = ws;
 
           ws.onmessage = function (event) {
@@ -87,7 +89,7 @@
             messages.appendChild(message);
           };
 
-          // list.appendChild(li);
+          list.appendChild(li);
         });
       };
 

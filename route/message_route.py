@@ -6,10 +6,12 @@ from model.user_model import UserModel
 from auth.current_user import get_current_user
 from schemas.token_schema import AuthenticateUser
 from sqlalchemy.orm import Session
-from schemas.messang_schema import MessageBase
+from schemas.messang_schema import MessageBase,MessageMedia,MessageWithoutMedia
 from uuid import UUID
 from database import database
 from typing import Annotated
+from model.media_model import MediaModel
+from sqlalchemy import and_,or_
 
 
 route=APIRouter(
@@ -32,18 +34,50 @@ def send_message(
             message_text=message_value.message
         )
 
-    
 
-@route.post("/get_all_message/{user_id}")
-def get_all_messasge(user_id:UUID,message_value:MessageBase,current_user:AuthenticateUser=Depends(get_current_user)):
+
+@route.get("/get_all_message/{user_id}")
+def get_all_messages(user_id: UUID, current_user: AuthenticateUser = Depends(get_current_user)):
     with get_db() as db:
-        all_message=db.query(MessageModel).filter(MessageModel.sender_id==current_user.user_id,
-                                                MessageModel.reciver_id==user_id).all()
-        
-        if not all_message:
-            raise HTTPException(status_code=404,detail=f"Not friend")
-        
-        return all_message
+        all_messages = db.query(MessageModel).filter(
+            or_(
+                and_(
+                    MessageModel.sender_id == current_user.user_id,
+                    MessageModel.reciver_id == user_id
+                ),
+                and_(
+                    MessageModel.sender_id == user_id,
+                    MessageModel.reciver_id == current_user.user_id
+                )
+            )
+        ).all()
+
+        if not all_messages:
+            raise HTTPException(status_code=404, detail="Not friend")
+
+        all_message_list = []
+
+        for message in all_messages:
+            media = db.query(MediaModel).filter(MediaModel.message_id == message.message_id).first()
+
+            if media:
+                me = MessageMedia(
+                    message_id=message.message_id,
+                    sender_id=message.sender_id,
+                    reciver_id=message.reciver_id,
+                    file_url=media.file_url
+                )
+            else:
+                me = MessageWithoutMedia(
+                    message_id=message.message_id,
+                    sender_id=message.sender_id,
+                    reciver_id=message.reciver_id,
+                    message=message.message
+                )
+
+            all_message_list.append(me)  # ✅ This should happen regardless of media
+
+        return all_message_list
 
 
 async def send_message_from_sender(
@@ -51,12 +85,18 @@ async def send_message_from_sender(
     receiver_id: UUID,
     message_text: str
 ):
-    db_gen = get_db()
-    db: Session = next(db_gen)
-    try:
-        send_message(db, sender_id=sender_id, receiver_id=receiver_id, message_text=message_text)
-    finally:
-        db_gen.close()
+    with get_db() as db:
+        message = MessageModel(
+        sender_id=sender_id,
+        reciver_id=receiver_id,
+        message=message_text
+    )
+
+    db.add(message)
+    db.commit()
+    db.refresh(message)
+
+    return {"message is sent"}
 
 
 def create_message(
