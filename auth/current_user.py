@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from model.user_model import UserModel
 from schemas.token_schema import TokenPayload,AuthenticateUser
 from sqlalchemy.orm import Session
+from uuid import UUID
 
 oauth2_schema=OAuth2PasswordBearer(tokenUrl='/auth/login')
 
@@ -48,3 +49,7 @@ async def get_current_user(token:str=Depends(oauth2_schema))->AuthenticateUser:
 
         return Users
 
+
+# def get_user_by_id(email:):
+#     with get_db() as db:
+#         return db.query(UserModel).filter(UserModel.user_id==user_id).first()
